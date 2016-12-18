@@ -23,7 +23,10 @@ class Compositions extends Component {
     _newComposition() {
         this.refs.nav.push({
             title: 'Untitled',
-            component: Composition
+            component: Composition,
+            passProps: {
+                item: false
+            }
         });
     }
 
@@ -41,10 +44,11 @@ class Compositions extends Component {
                 initialRoute={{
                     component: Dashboard,
                     title: 'Compositions',
-                    leftButtonTitle: 'New',
+                    leftButtonSystemIcon: 'compose',
                     onLeftButtonPress: this._newComposition,
                     rightButtonTitle: 'Settings',
-                    onRightButtonPress: this._settingsPage
+                    onRightButtonPress: this._settingsPage,
+                    translucent: true,
                 }}
                 style={styles.container}
                 />

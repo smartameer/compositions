@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 import {
     StyleSheet,
     PixelRatio,
@@ -6,17 +6,44 @@ import {
     TextInput,
     Text
 } from 'react-native';
+import store from 'react-native-simple-store';
 
 class Composition extends Component {
+    static propTypes = {
+        title: PropTypes.string,
+        navigator: PropTypes.object.isRequired,
+    }
+
     constructor(props, context) {
         super(props, context);
+        this.progress = null;
+        this.storecreated = false;
+        let item = !this.props.item ? '' + new Date().getTime() : this.props.item;
+        this.initKey = Object.assign({}, {key: item});
         this.state = {
+            item: item,
             wordcount: 0,
             textareaHeight: 0,
             text: '',
         };
         this._contentSizeChanged = this._contentSizeChanged.bind(this);
         this._changeText = this._changeText.bind(this);
+        this._changeTitle = this._changeTitle.bind(this);
+        this._updateStore = this._updateStore.bind(this);
+        this._updateStoreKey = this._updateStoreKey.bind(this);
+    }
+
+    componentDidMount() {
+        store.get(this.state.item).then(content => {
+            if (content) {
+                const {text} = content;
+                if (text) {
+                    this.setState({text});
+                    this._countWords();
+                    this.storecreated = true;
+                }
+            }
+        });
     }
 
     _countWords() {
@@ -41,11 +68,68 @@ class Composition extends Component {
     _changeText(text) {
         this.setState({text});
         this._countWords();
+        this._updateStore();
+    }
+
+    _changeTitle(item) {
+        this.setState({item});
+    }
+
+    _updateStoreKey() {
+        store.get(this.initKey.key).then(content => {
+            if (content && this.initKey.key != '') {
+                store.delete(this.initKey.key);
+            }
+            if (this.state.item !== '') {
+                store.save(this.state.item, {
+                    text: this.state.text
+                });
+                this.initKey = Object.assign({}, {key: this.state.item});
+            }
+        });
+    }
+
+    _updateStore() {
+        if (this.progress) {
+            clearTimeout(this.progress);
+            this.progress = null;
+        }
+        if (this.progress === null) {
+            this.progress = setTimeout(() => {
+                if (!this.storecreated) {
+                    store.save(this.state.item, {
+                        text: this.state.text
+                    }).then(data => {
+                        this.storecreated = true;
+                    });
+                } else {
+                    store.update(this.state.item, {
+                        text: this.state.text
+                    });
+                }
+                this.progress = null;
+            }, 300);
+        }
     }
 
     render() {
         return (
             <View style={styles.container}>
+                <View style={styles.header}>
+                    <TextInput
+                        editable={true}
+                        multiline={false}
+                        autoCorrect={false}
+                        placeholder="Document Title ..."
+                        placeholderTextColor="#CDCDCD"
+                        autoCapitalize="sentences"
+                        onChangeText={this._changeTitle}
+                        onBlur={this._updateStoreKey}
+                        maxLength={100}
+                        style={styles.titletext}
+                        value={this.state.item}
+                        />
+                </View>
                 <TextInput
                     editable={true}
                     multiline={true}
@@ -72,14 +156,28 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'white',
     },
+    header: {
+        marginTop: 80,
+        padding: 10,
+        borderBottomColor: '#DDD',
+        borderBottomWidth: 1 / PixelRatio.get(),
+    },
+    titletext: {
+        padding: 5,
+        fontSize: 20,
+        color: '#333333',
+        fontWeight: '400',
+        fontFamily: 'Palatino',
+        textAlign: 'center',
+        textAlignVertical: 'center'
+    },
     textarea: {
         flex: 1,
         color: '#333333',
-        fontSize: 17,
         fontWeight: '400',
         fontFamily: 'Palatino',
         height: 100,
-        marginTop: 70,
+        marginTop: 5,
         marginBottom: 35,
         marginLeft: 10,
         marginRight: 10,
@@ -98,7 +196,7 @@ const styles = StyleSheet.create({
     },
     wordcount: {
         fontSize: 12,
-        fontWeight: '300',
+        fontFamily: 'Palatino',
         paddingLeft: 10,
     }
 });
